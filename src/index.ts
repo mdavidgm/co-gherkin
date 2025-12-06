@@ -35,7 +35,7 @@
  */
 
 // Step definitions
-export { Given, When, Then, globalRegistry } from './registry';
+export { Given, When, Then, globalRegistry } from './registry.js';
 
 // Lifecycle hooks
 export {
@@ -44,12 +44,12 @@ export {
   BeforeScenario,
   AfterScenario,
   globalHooks,
-} from './hooks';
+} from './hooks.js';
 
 // Runner
-export { runFeature, parseFeatureFile, executeSteps, executeScenario } from './runner';
+export { runFeature, parseFeatureFile, executeSteps, executeScenario } from './runner.js';
 
 // Types
-export type { ParsedFeature, ParsedScenario, ParsedStep } from './parser';
-export type { StepFunction, StepType } from './registry';
-export type { HookFunction } from './hooks';
+export type { ParsedFeature, ParsedScenario, ParsedStep } from './parser.js';
+export type { StepFunction, StepType } from './registry.js';
+export type { HookFunction } from './hooks.js';

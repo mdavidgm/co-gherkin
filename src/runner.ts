@@ -11,9 +11,9 @@ import {
   ParsedFeature,
   ParsedScenario,
   ParsedStep,
-} from './parser';
-import { globalRegistry } from './registry';
-import { globalHooks } from './hooks';
+} from './parser.js';
+import { globalRegistry } from './registry.js';
+import { globalHooks } from './hooks.js';
 
 /**
  * Run a .feature file as Vitest tests
