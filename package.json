@@ -1,0 +1,50 @@
+{
+  "name": "co-gherkin",
+  "version": "1.0.0",
+  "description": "Gherkin BDD testing for Vitest - A lightweight, TypeScript-first BDD testing framework",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "prepublishOnly": "npm run build",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "vitest",
+    "gherkin",
+    "bdd",
+    "testing",
+    "cucumber",
+    "test",
+    "typescript",
+    "behavior-driven-development"
+  ],
+  "author": "David García <mdavidgm@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mdavidgm/co-gherkin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mdavidgm/co-gherkin/issues"
+  },
+  "homepage": "https://github.com/mdavidgm/co-gherkin#readme",
+  "peerDependencies": {
+    "vitest": "^4.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^4.0.0",
+    "@types/node": "^22.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
