@@ -301,6 +301,8 @@ export default defineConfig({
 
 ## 🛣️ Roadmap
 
+See our [detailed roadmap](ROADMAP.md) for planned features.
+
 **v1.0.0 (Current)**
 - [x] Core engine (Parser + Runner)
 - [x] TypeScript definitions
