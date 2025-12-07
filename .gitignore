@@ -36,3 +36,5 @@ yarn-error.log*
 
 # Agent files (local only)
 .agent/
+.antigravity
+docs/

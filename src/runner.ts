@@ -14,6 +14,7 @@ import {
 } from './parser.js';
 import { globalRegistry } from './registry.js';
 import { globalHooks } from './hooks.js';
+import { logger } from './logger.js';
 
 /**
  * Run a .feature file as Vitest tests
@@ -59,6 +60,7 @@ function describeScenario(scenario: ParsedScenario, feature: ParsedFeature) {
   const testName = scenario.name || 'Unnamed Scenario';
 
   it(testName, async () => {
+    logger.log('RUNNER', `Executing scenario: ${testName}`);
     // Run background steps if any
     if (feature.background) {
       await executeSteps(feature.background, 'Background');
@@ -86,11 +88,14 @@ export async function executeScenario(featureContent: string, scenarioName: stri
 
 export async function executeSteps(steps: ParsedStep[], scenarioName: string) {
   for (const step of steps) {
+    logger.log('RUNNER', `Step: ${step.keyword} ${step.text}`);
     const registered = globalRegistry.findStep(step.text);
 
     if (!registered) {
+      const errorMsg = `Missing step definition for "${step.keyword} ${step.text}" in scenario "${scenarioName}"`;
+      logger.error('RUNNER', errorMsg);
       throw new Error(
-        `Missing step definition for "${step.keyword} ${step.text}" in scenario "${scenarioName}"\n` +
+        errorMsg + '\n' +
         `\nAdd this step definition:\n` +
         `Given('${step.text}', () => {\n` +
         `  // Your implementation here\n` +
@@ -105,11 +110,17 @@ export async function executeSteps(steps: ParsedStep[], scenarioName: string) {
       args.push(step.dataTable);
     }
 
+    if (step.docstring) {
+      args.push(step.docstring);
+    }
+
     try {
       await fn(...args);
     } catch (error: any) {
+      const errorMsg = `Step failed: "${step.keyword} ${step.text}" in scenario "${scenarioName}"`;
+      logger.error('RUNNER', errorMsg, error);
       throw new Error(
-        `Step failed: "${step.keyword} ${step.text}" in scenario "${scenarioName}"\n` +
+        errorMsg + '\n' +
         `Error: ${error.message}\n` +
         error.stack
       );

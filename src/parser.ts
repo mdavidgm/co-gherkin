@@ -4,13 +4,15 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
+import { logger } from './logger.js';
+import { resolveFeaturePath } from './utils.js';
 
 export interface ParsedStep {
   keyword: string;
   text: string;
   type: 'Given' | 'When' | 'Then' | 'And' | 'But' | '*';
   dataTable?: string[][];
+  docstring?: string;
 }
 
 export interface ParsedScenario {
@@ -30,126 +32,170 @@ export interface ParsedFeature {
  * Parse a .feature file into structured data
  */
 export function parseFeatureFile(featurePath: string): ParsedFeature {
-  let absolutePath: string;
-
-  if (path.isAbsolute(featurePath)) {
-    absolutePath = featurePath;
-  } else {
-    // Get caller's directory from stack trace
-    const stack = new Error().stack;
-    const stackLines = stack?.split('\n') || [];
-
-    let callerFile = '';
-    for (const line of stackLines) {
-      const match = line.match(/at\s+(?:.*?\(|)(.*?):\d+:\d+(?:\)|)/);
-      if (match && match[1]) {
-        const file = match[1];
-        if (!file.includes('vitest-gherkin-global/src/parser') &&
-          !file.includes('vitest-gherkin-global/src/runner') &&
-          !file.includes('vitest-gherkin-global/src/index')) {
-          callerFile = file;
-          break;
-        }
-      }
-    }
-
-    if (callerFile) {
-      const callerDir = path.dirname(callerFile);
-      absolutePath = path.resolve(callerDir, featurePath);
-    } else {
-      absolutePath = path.resolve(process.cwd(), featurePath);
-    }
-  }
+  const absolutePath = resolveFeaturePath(featurePath);
 
   const content = fs.readFileSync(absolutePath, 'utf-8');
+  logger.log('PARSER', `Parsing feature file: ${absolutePath}`);
   return parseFeatureContent(content);
 }
 
 export function parseFeatureContent(content: string): ParsedFeature {
-  const lines = content.split('\n');
+  const parser = new FeatureParser();
+  return parser.parse(content);
+}
 
-  let featureName = '';
-  const featureDescription = '';
-  const scenarios: ParsedScenario[] = [];
-  let backgroundSteps: ParsedStep[] = [];
+class FeatureParser {
+  private featureName = '';
+  private featureDescription = '';
+  private scenarios: ParsedScenario[] = [];
+  private backgroundSteps: ParsedStep[] = [];
 
-  let currentScenario: ParsedScenario | null = null;
-  let isBackground = false;
-  let isScenarioOutline = false;
-  let currentExamples: { headers: string[]; rows: string[][] } | null = null;
-  let outlineScenarioTemplate: ParsedScenario | null = null;
+  private currentScenario: ParsedScenario | null = null;
+  private isBackground = false;
+  private isScenarioOutline = false;
+  private currentExamples: { headers: string[]; rows: string[][] } | null = null;
+  private outlineScenarioTemplate: ParsedScenario | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmedLine = line.trim();
+  // DocString handling
+  private inDocString = false;
+  private docStringLines: string[] = [];
 
-    // Skip comments and empty lines
-    if (trimmedLine.startsWith('#') || trimmedLine === '') {
-      continue;
+  parse(content: string): ParsedFeature {
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+
+      if (this.handleDocString(line, trimmedLine, i)) {
+        continue;
+      }
+
+      // Skip comments and empty lines ONLY if not in DocString
+      if (trimmedLine.startsWith('#') || trimmedLine === '') {
+        continue;
+      }
+
+      if (this.handleFeature(trimmedLine)) continue;
+      if (this.handleBackground(trimmedLine)) continue;
+      if (this.handleScenario(trimmedLine)) continue;
+      if (this.handleExamples(trimmedLine)) continue;
+      if (this.handleTable(trimmedLine)) continue;
+
+      // Close Examples block if we hit a non-table line
+      this.closeExamplesIfOpen();
+
+      this.handleStep(trimmedLine);
     }
 
-    // Feature
+    this.finalize();
+
+    return {
+      name: this.featureName,
+      description: this.featureDescription,
+      scenarios: this.scenarios,
+      background: this.backgroundSteps.length > 0 ? this.backgroundSteps : undefined,
+    };
+  }
+
+  private handleDocString(line: string, trimmedLine: string, lineIndex: number): boolean {
+    if (trimmedLine.startsWith('"""')) {
+      if (this.inDocString) {
+        // End of DocString
+        this.inDocString = false;
+        this.attachDocString(lineIndex);
+        this.docStringLines = [];
+      } else {
+        // Start of DocString
+        this.inDocString = true;
+      }
+      return true;
+    }
+
+    if (this.inDocString) {
+      this.docStringLines.push(line);
+      return true;
+    }
+    return false;
+  }
+
+  private attachDocString(lineIndex: number) {
+    const targetSteps = this.getCurrentStepList();
+    const lastStep = targetSteps[targetSteps.length - 1];
+
+    if (lastStep) {
+      logger.log('PARSER', `Attaching docstring to step: ${lastStep.text}`);
+      lastStep.docstring = this.docStringLines.join('\n');
+    } else {
+      logger.log('PARSER', `WARNING: No lastStep to attach docstring! Line: ${lineIndex}`);
+    }
+  }
+
+  private handleFeature(trimmedLine: string): boolean {
     if (trimmedLine.startsWith('Feature:')) {
-      featureName = trimmedLine.replace('Feature:', '').trim();
-      continue;
+      this.featureName = trimmedLine.replace('Feature:', '').trim();
+      return true;
     }
+    return false;
+  }
 
-    // Background
+  private handleBackground(trimmedLine: string): boolean {
     if (trimmedLine.startsWith('Background:')) {
-      isBackground = true;
-      currentScenario = null;
-      continue;
+      this.isBackground = true;
+      this.currentScenario = null;
+      return true;
     }
+    return false;
+  }
 
-    // Scenario / Scenario Outline
+  private handleScenario(trimmedLine: string): boolean {
     if (trimmedLine.startsWith('Scenario:') || trimmedLine.startsWith('Scenario Outline:')) {
-      isBackground = false;
-      isScenarioOutline = trimmedLine.startsWith('Scenario Outline:');
+      this.isBackground = false;
+      this.isScenarioOutline = trimmedLine.startsWith('Scenario Outline:');
 
-      if (currentScenario && !isScenarioOutline) {
-        scenarios.push(currentScenario);
+      if (this.currentScenario && !this.isScenarioOutline) {
+        this.scenarios.push(this.currentScenario);
       }
 
       const scenarioName = trimmedLine.replace(/Scenario( Outline)?:/, '').trim();
-
-      const newScenario = {
+      const newScenario: ParsedScenario = {
         name: scenarioName,
         steps: [],
         tags: [],
       };
 
-      if (isScenarioOutline) {
-        outlineScenarioTemplate = newScenario;
-        currentScenario = null;
+      if (this.isScenarioOutline) {
+        this.outlineScenarioTemplate = newScenario;
+        this.currentScenario = null;
       } else {
-        currentScenario = newScenario;
+        this.currentScenario = newScenario;
       }
-      continue;
+      return true;
     }
+    return false;
+  }
 
-    // Examples Block
+  private handleExamples(trimmedLine: string): boolean {
     if (trimmedLine.startsWith('Examples:')) {
-      currentExamples = { headers: [], rows: [] };
-      continue;
+      this.currentExamples = { headers: [], rows: [] };
+      return true;
     }
+    return false;
+  }
 
-    // Table Row (Examples or Data Table)
+  private handleTable(trimmedLine: string): boolean {
     if (trimmedLine.startsWith('|')) {
-      const rowData = trimmedLine
-        .split('|')
-        .slice(1, -1)
-        .map(cell => cell.trim());
+      const rowData = trimmedLine.split('|').slice(1, -1).map(c => c.trim());
 
-      if (currentExamples) {
-        // We are in an Examples block
-        if (currentExamples.headers.length === 0) {
-          currentExamples.headers = rowData;
+      if (this.currentExamples) {
+        if (this.currentExamples.headers.length === 0) {
+          this.currentExamples.headers = rowData;
         } else {
-          currentExamples.rows.push(rowData);
+          this.currentExamples.rows.push(rowData);
         }
-      } else if (currentScenario || (isBackground && backgroundSteps)) {
-        // We are in a Data Table for a step
-        const targetSteps = isBackground ? backgroundSteps : (isScenarioOutline ? outlineScenarioTemplate!.steps : currentScenario!.steps);
+      } else {
+        // Data table for step
+        const targetSteps = this.getCurrentStepList();
         const lastStep = targetSteps[targetSteps.length - 1];
         if (lastStep) {
           if (!lastStep.dataTable) {
@@ -158,75 +204,74 @@ export function parseFeatureContent(content: string): ParsedFeature {
           lastStep.dataTable.push(rowData);
         }
       }
-      continue;
-    } else {
-      // If we encounter a non-table line, close the examples block if open
-      if (currentExamples && outlineScenarioTemplate) {
-        // Expand Scenario Outline
-        expandScenarioOutline(outlineScenarioTemplate, currentExamples, scenarios);
-        currentExamples = null;
-        outlineScenarioTemplate = null;
-      }
+      return true;
     }
+    return false;
+  }
 
-    // Steps
+  private closeExamplesIfOpen() {
+    if (this.currentExamples && this.outlineScenarioTemplate) {
+      this.expandScenarioOutline(this.outlineScenarioTemplate, this.currentExamples);
+      this.currentExamples = null;
+      this.outlineScenarioTemplate = null;
+    }
+  }
+
+  private handleStep(trimmedLine: string): boolean {
     const stepMatch = trimmedLine.match(/^(\*|Given|When|Then|And|But)\s+(.+)$/);
     if (stepMatch) {
       const [, keyword, text] = stepMatch;
-      const stepType: 'Given' | 'When' | 'Then' | 'And' | 'But' | '*' = keyword as any;
+      const stepType = keyword as ParsedStep['type'];
 
-      const step: ParsedStep = {
-        keyword: keyword,
-        text: text,
-        type: stepType,
-      };
+      const step: ParsedStep = { keyword, text, type: stepType };
 
-      if (isBackground) {
-        backgroundSteps.push(step);
-      } else if (isScenarioOutline && outlineScenarioTemplate) {
-        outlineScenarioTemplate.steps.push(step);
-      } else if (currentScenario) {
-        currentScenario.steps.push(step);
+      if (this.isBackground) {
+        this.backgroundSteps.push(step);
+      } else if (this.isScenarioOutline) {
+        // We can assert ! because isScenarioOutline always sets outlineScenarioTemplate
+        this.outlineScenarioTemplate!.steps.push(step);
+      } else if (this.currentScenario) {
+        this.currentScenario.steps.push(step);
       }
+      return true;
+    }
+    return false;
+  }
+
+  private finalize() {
+    if (this.currentScenario) {
+      this.scenarios.push(this.currentScenario);
+    } else if (this.outlineScenarioTemplate && this.currentExamples) {
+      this.expandScenarioOutline(this.outlineScenarioTemplate, this.currentExamples);
     }
   }
 
-  // Handle last scenario or outline
-  if (currentScenario) {
-    scenarios.push(currentScenario);
-  } else if (outlineScenarioTemplate && currentExamples) {
-    expandScenarioOutline(outlineScenarioTemplate, currentExamples, scenarios);
+  private expandScenarioOutline(
+    template: ParsedScenario,
+    examples: { headers: string[]; rows: string[][] }
+  ) {
+    examples.rows.forEach((row, index) => {
+      const scenarioName = `${template.name} (Example ${index + 1})`;
+      const steps = template.steps.map(step => {
+        let newText = step.text;
+        examples.headers.forEach((header, colIndex) => {
+          const value = row[colIndex];
+          newText = newText.replace(new RegExp(`<${header}>`, 'g'), value);
+        });
+        return { ...step, text: newText };
+      });
+
+      this.scenarios.push({
+        name: scenarioName,
+        steps: steps,
+        tags: template.tags,
+      });
+    });
   }
 
-  return {
-    name: featureName,
-    description: featureDescription,
-    scenarios,
-    background: backgroundSteps.length > 0 ? backgroundSteps : undefined,
-  };
-}
-
-function expandScenarioOutline(
-  template: ParsedScenario,
-  examples: { headers: string[]; rows: string[][] },
-  scenarios: ParsedScenario[]
-) {
-  examples.rows.forEach((row, index) => {
-    const scenarioName = `${template.name} (Example ${index + 1})`;
-    const steps = template.steps.map(step => {
-      let newText = step.text;
-      // Replace <header> with value
-      examples.headers.forEach((header, colIndex) => {
-        const value = row[colIndex];
-        newText = newText.replace(new RegExp(`<${header}>`, 'g'), value);
-      });
-      return { ...step, text: newText };
-    });
-
-    scenarios.push({
-      name: scenarioName,
-      steps: steps,
-      tags: template.tags,
-    });
-  });
+  private getCurrentStepList() {
+    if (this.isBackground) return this.backgroundSteps;
+    if (this.isScenarioOutline && this.outlineScenarioTemplate) return this.outlineScenarioTemplate.steps;
+    return this.currentScenario ? this.currentScenario.steps : [];
+  }
 }

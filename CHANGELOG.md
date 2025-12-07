@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-12-07
+
+### Added
+
+- **100% Code Coverage**: Achieved full test coverage for the library core logic (>99%).
+- **Examples**: Added a `examples/` directory with a fully working Calculator project to demonstrate usage.
+- **Improved Logging**: Logs are now silent by default and controlled via `CO_GHERKIN_DEBUG` environment variable.
+
+### Fixed
+
+- Fixed path resolution for `file://` URIs in stack traces (improves compatibility with some Vitest environments).
+- Fixed step matching logic for negative numbers in regex examples.
+- Removed noisy debug logs from default execution.
+
 ## [1.0.0] - 2025-12-06
 
 ### Added

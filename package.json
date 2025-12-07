@@ -1,6 +1,6 @@
 {
   "name": "co-gherkin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Gherkin BDD testing for Vitest - A lightweight, TypeScript-first BDD testing framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest",
+    "test:coverage": "vitest --coverage",
     "prepublishOnly": "npm run build",
     "clean": "rm -rf dist"
   },
@@ -17,6 +18,7 @@
     "bdd",
     "testing",
     "cucumber",
+    "cucumberjs",
     "test",
     "typescript",
     "behavior-driven-development"
@@ -37,7 +39,8 @@
   "devDependencies": {
     "typescript": "^5.6.0",
     "vitest": "^4.0.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.0.0"
   },
   "files": [
     "dist",

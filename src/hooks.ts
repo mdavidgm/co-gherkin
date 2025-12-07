@@ -78,7 +78,14 @@ class HooksRegistry {
 }
 
 // Singleton global hooks registry
-const globalHooks = new HooksRegistry();
+// Use globalThis to ensure singleton across module compilations in tests
+const GLOBAL_HOOKS_KEY = Symbol.for('co-gherkin.hooks');
+
+if (!(globalThis as any)[GLOBAL_HOOKS_KEY]) {
+  (globalThis as any)[GLOBAL_HOOKS_KEY] = new HooksRegistry();
+}
+
+export const globalHooks = (globalThis as any)[GLOBAL_HOOKS_KEY] as HooksRegistry;
 
 /**
  * Register a hook to run before each feature
@@ -127,5 +134,5 @@ export function AfterScenario(fn: HookFunction) {
   globalHooks.registerAfterScenario(fn);
 }
 
-export { globalHooks, HooksRegistry };
+export { HooksRegistry };
 export type { HookFunction };

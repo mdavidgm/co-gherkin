@@ -18,10 +18,25 @@ Co-Gherkin brings the power of Gherkin (Given-When-Then) syntax to **Vitest**, t
 ### Why "Co"?
 
 Inspired by **co-working** philosophy, Co-Gherkin promotes **collaborative testing** where:
+
 - ✅ Product managers write scenarios in plain English
 - ✅ Developers implement step definitions
 - ✅ QA validates behavior automatically
 - ✅ Everyone speaks the same language
+
+### 🎯 Meta-Testing: We Practice What We Preach
+
+**Co-Gherkin tests itself using Co-Gherkin!** 🔄
+
+That's right - we use our own BDD framework to test our own code. This means:
+
+- 💯 **>99% test coverage** achieved through BDD scenarios
+- 🧪 **Real-world validation** - if it works for us, it works for you
+- 📂 **[Examples](./examples/)** - Check out our `examples/` folder for a fully working Calculator project
+- 📖 **Living documentation** - our test features are usage examples
+- 🔍 **Quality assurance** - we trust our own tool enough to depend on it
+
+Check out our [test features](tests/features/core/) to see Co-Gherkin in action testing itself!
 
 ### The Problem
 
@@ -54,6 +69,7 @@ npm install co-gherkin --save-dev
 ### 1. Create a `.feature` file
 
 **`features/login.feature`**:
+
 ```gherkin
 Feature: User Login
 
@@ -66,33 +82,35 @@ Feature: User Login
 ### 2. Define steps
 
 **`tests/login.steps.ts`**:
-```typescript
-import { Given, When, Then } from 'co-gherkin';
-import { render, screen } from '@testing-library/react';
-import { LoginPage } from '../pages/LoginPage';
 
-Given('I am on the login page', () => {
+```typescript
+import { Given, When, Then } from "co-gherkin";
+import { render, screen } from "@testing-library/react";
+import { LoginPage } from "../pages/LoginPage";
+
+Given("I am on the login page", () => {
   render(<LoginPage />);
 });
 
-When('I enter {string} and {string}', (email: string, password: string) => {
+When("I enter {string} and {string}", (email: string, password: string) => {
   // Your test logic
 });
 
-Then('I should see the dashboard', () => {
-  expect(screen.getByText('Dashboard')).toBeInTheDocument();
+Then("I should see the dashboard", () => {
+  expect(screen.getByText("Dashboard")).toBeInTheDocument();
 });
 ```
 
 ### 3. Run the feature
 
 **`tests/login.test.ts`**:
-```typescript
-import { runFeature } from 'co-gherkin';
-import { resolve } from 'path';
-import './login.steps';
 
-runFeature(resolve(__dirname, '../features/login.feature'));
+```typescript
+import { runFeature } from "co-gherkin";
+import { resolve } from "path";
+import "./login.steps";
+
+runFeature(resolve(__dirname, "../features/login.feature"));
 ```
 
 ### 4. Execute with Vitest
@@ -110,7 +128,7 @@ npm run test
 - ✅ **Lightweight** - Zero heavy dependencies
 - ✅ **Fast** - Powered by Vitest's speed
 - ✅ **Full Gherkin Support**:
-  - ✅ Given, When, Then, And, But, * keywords
+  - ✅ Given, When, Then, And, But, \* keywords
   - ✅ **Background** - Shared setup steps
   - ✅ **Scenario Outline** - Data-driven tests with Examples
   - ✅ **Data Tables** - Structured test data
@@ -128,21 +146,21 @@ npm run test
 Define test steps using Gherkin keywords:
 
 ```typescript
-import { Given, When, Then, And } from 'co-gherkin';
+import { Given, When, Then, And } from "co-gherkin";
 
-Given('I am on the {string} page', (pageName: string) => {
+Given("I am on the {string} page", (pageName: string) => {
   // Setup code
 });
 
-When('I click the {string} button', (buttonName: string) => {
+When("I click the {string} button", (buttonName: string) => {
   // Action code
 });
 
-Then('I should see {string}', (text: string) => {
+Then("I should see {string}", (text: string) => {
   // Assertion code
 });
 
-And('the page title is {string}', (title: string) => {
+And("the page title is {string}", (title: string) => {
   // Additional assertion
 });
 ```
@@ -211,7 +229,7 @@ Given the following users exist:
 ```
 
 ```typescript
-Given('the following users exist:', (dataTable: string[][]) => {
+Given("the following users exist:", (dataTable: string[][]) => {
   dataTable.forEach(([name, email, role]) => {
     createUser({ name, email, role });
   });
@@ -223,7 +241,7 @@ Given('the following users exist:', (dataTable: string[][]) => {
 Execute code before/after each scenario:
 
 ```typescript
-import { BeforeScenario, AfterScenario } from 'co-gherkin';
+import { BeforeScenario, AfterScenario } from "co-gherkin";
 
 BeforeScenario(() => {
   // Setup: clear database, reset state, etc.
@@ -239,10 +257,10 @@ AfterScenario(() => {
 Run a feature file:
 
 ```typescript
-import { runFeature } from 'co-gherkin';
-import { resolve } from 'path';
+import { runFeature } from "co-gherkin";
+import { resolve } from "path";
 
-runFeature(resolve(__dirname, './features/my-feature.feature'));
+runFeature(resolve(__dirname, "./features/my-feature.feature"));
 ```
 
 ---
@@ -271,13 +289,14 @@ my-project/
 ## 🔧 Configuration
 
 **`vitest.config.ts`**:
+
 ```typescript
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: "jsdom",
   },
 });
 ```
@@ -286,16 +305,16 @@ export default defineConfig({
 
 ## 🆚 Comparison
 
-| Feature | Co-Gherkin | Cucumber.js | Playwright BDD |
-|---------|-----------|-------------|----------------|
-| Vitest Support | ✅ Native | ❌ No | ❌ No |
-| TypeScript | ✅ First-class | ⚠️ Partial | ✅ Yes |
-| Unit Tests | ✅ Yes | ✅ Yes | ❌ E2E only |
-| Speed | ⚡ Fast | 🐢 Slow | ⚡ Fast |
-| Bundle Size | 🪶 Light | 📦 Heavy | 📦 Heavy |
-| Background | ✅ Yes | ✅ Yes | ✅ Yes |
-| Scenario Outline | ✅ Yes | ✅ Yes | ✅ Yes |
-| Data Tables | ✅ Yes | ✅ Yes | ✅ Yes |
+| Feature          | Co-Gherkin     | Cucumber.js | Playwright BDD |
+| ---------------- | -------------- | ----------- | -------------- |
+| Vitest Support   | ✅ Native      | ❌ No       | ❌ No          |
+| TypeScript       | ✅ First-class | ⚠️ Partial  | ✅ Yes         |
+| Unit Tests       | ✅ Yes         | ✅ Yes      | ❌ E2E only    |
+| Speed            | ⚡ Fast        | 🐢 Slow     | ⚡ Fast        |
+| Bundle Size      | 🪶 Light       | 📦 Heavy    | 📦 Heavy       |
+| Background       | ✅ Yes         | ✅ Yes      | ✅ Yes         |
+| Scenario Outline | ✅ Yes         | ✅ Yes      | ✅ Yes         |
+| Data Tables      | ✅ Yes         | ✅ Yes      | ✅ Yes         |
 
 ---
 
@@ -303,7 +322,8 @@ export default defineConfig({
 
 See our [detailed roadmap](ROADMAP.md) for planned features.
 
-**v1.0.0 (Current)**
+**v1.0.0 (Stable)**
+
 - [x] Core engine (Parser + Runner)
 - [x] TypeScript definitions
 - [x] Step definition system
@@ -311,15 +331,12 @@ See our [detailed roadmap](ROADMAP.md) for planned features.
 - [x] Background support
 - [x] Scenario Outline with Examples
 - [x] Data Tables
+- [x] **>99% Code Coverage**
 
-**Future Versions**
+**Future Ideas**
+
 - [ ] Tags support (@smoke, @integration)
-- [ ] Tag filtering
-- [ ] HTML Reporter
-- [ ] Parallel execution optimization
 - [ ] VS Code Extension with syntax highlighting
-- [ ] Step definition auto-generation
-- [ ] Custom formatters
 
 ---
 
@@ -344,6 +361,7 @@ MIT © [David García](https://github.com/mdavidgm)
 ## 👤 Author
 
 **David García**
+
 - 🐙 [GitHub](https://github.com/mdavidgm)
 - 💼 [LinkedIn](https://www.linkedin.com/in/manuel-david-garcia-mateos-ba5b11109/)
 
@@ -353,4 +371,4 @@ MIT © [David García](https://github.com/mdavidgm)
 
 Built with ❤️ for the Vitest community
 
-*"Testing, Together" - The Co-Gherkin Philosophy*
+_"Testing, Together" - The Co-Gherkin Philosophy_
