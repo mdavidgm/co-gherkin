@@ -1,9 +1,9 @@
 /**
  * Feature Runner
- * Executes Gherkin scenarios as Vitest tests with coverage support
+ * Executes Gherkin scenarios as test framework tests with coverage support
  */
 
-import { describe, it, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { getConfig } from './config.js';
 
 import {
   parseFeatureFile,
@@ -17,17 +17,18 @@ import { globalHooks } from './hooks.js';
 import { logger } from './logger.js';
 
 /**
- * Run a .feature file as Vitest tests
- * Coverage works because we generate real Vitest describe/it blocks
+ * Run a .feature file as test framework tests
+ * Coverage works because we generate real describe/it blocks
  *
  * @param featurePath - Relative path to .feature file from the calling test file
  * @example
  * // tests/features/login.test.ts
- * import { runFeature } from '@lib/vitest-gherkin-global';
+ * import { runFeature } from 'co-gherkin';
  * runFeature('./login.feature');
  */
 export function runFeature(featurePath: string) {
   const feature = parseFeatureFile(featurePath);
+  const { describe, beforeAll, afterAll, beforeEach, afterEach } = getConfig();
 
   describe(`Feature: ${feature.name}`, () => {
     // Run BeforeFeature hooks
@@ -58,6 +59,7 @@ export function runFeature(featurePath: string) {
 
 function describeScenario(scenario: ParsedScenario, feature: ParsedFeature) {
   const testName = scenario.name || 'Unnamed Scenario';
+  const { it } = getConfig();
 
   it(testName, async () => {
     logger.log('RUNNER', `Executing scenario: ${testName}`);

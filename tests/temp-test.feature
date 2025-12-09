@@ -1,4 +1,5 @@
-Feature: Hook Test
+
+  Feature: Hook Test
   Scenario: First
     Given a step
 

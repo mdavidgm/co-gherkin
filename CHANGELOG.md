@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-09
+
+### Added
+
+- **Framework-Agnostic Configuration**: New `configureGherkin()` API to make co-gherkin compatible with any test framework (Playwright, Jest, etc.)
+- **Playwright Support**: New `runFeatureSync()` function for Playwright E2E tests
+- **Configuration Module**: New `config.ts` module with `GherkinConfig` interface
+- **Synchronous Runner**: New `playwright-runner.ts` for frameworks that require synchronous test definition
+
+### Changed
+
+- **Auto-Detection**: Improved Vitest auto-detection using global functions instead of require()
+- **Vitest Config**: Enabled `globals: true` in vitest.config.ts for backward compatibility
+
+### Fixed
+
+- **Symbol Conflict**: Resolved `Cannot redefine property: Symbol($$jest-matchers-object)` error when using with Playwright
+- **ESM Compatibility**: Removed `require()` usage in favor of global detection
+- **Playwright Test Generation**: Created `runFeatureSync()` to generate tests synchronously for Playwright compatibility
+
+### Migration Guide
+
+**For Vitest users (backward compatible)**:
+No changes needed! Auto-detection still works with `runFeature()`.
+
+**For Playwright users (new)**:
+
+```typescript
+import { configureGherkin, runFeatureSync } from "co-gherkin";
+import { test } from "@playwright/test";
+
+// Configure co-gherkin for Playwright
+configureGherkin({
+  describe: test.describe,
+  it: test,
+  beforeAll: test.beforeAll,
+  afterAll: test.afterAll,
+  beforeEach: test.beforeEach,
+  afterEach: test.afterEach,
+});
+
+// Use runFeatureSync instead of runFeature
+runFeatureSync("/absolute/path/to/feature.feature");
+```
+
+**Key Difference**:
+
+- `runFeature()`: For Vitest (dynamic test generation)
+- `runFeatureSync()`: For Playwright (synchronous test generation)
+
 ## [1.0.2] - 2025-12-07
 
 ### Added

@@ -2,18 +2,19 @@
 
 **BDD Testing, Together**
 
-> BDD (Behavior-Driven Development) testing with Gherkin syntax for Vitest
+> BDD (Behavior-Driven Development) testing with Gherkin syntax for **Vitest** and **Playwright**
 
 [![npm version](https://img.shields.io/npm/v/co-gherkin)](https://www.npmjs.com/package/co-gherkin)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue)](https://www.typescriptlang.org/)
 [![Vitest](https://img.shields.io/badge/Vitest-4.0-green)](https://vitest.dev/)
+[![Playwright](https://img.shields.io/badge/Playwright-1.57-red)](https://playwright.dev/)
 
 ---
 
 ## 🚀 What is Co-Gherkin?
 
-Co-Gherkin brings the power of Gherkin (Given-When-Then) syntax to **Vitest**, the blazing-fast test runner for modern JavaScript and TypeScript.
+Co-Gherkin brings the power of Gherkin (Given-When-Then) syntax to modern JavaScript testing frameworks: **Vitest** for unit/integration tests and **Playwright** for E2E tests.
 
 ### Why "Co"?
 
@@ -121,12 +122,98 @@ npm run test
 
 ---
 
+## 🎭 Playwright E2E Testing
+
+Co-Gherkin also works with **Playwright** for End-to-End testing!
+
+### 1. Configure Co-Gherkin for Playwright
+
+**`tests/e2e/playwright-setup.ts`**:
+
+```typescript
+import { configureGherkin } from "co-gherkin";
+import { test } from "@playwright/test";
+
+// Configure co-gherkin to use Playwright's test functions
+configureGherkin({
+  describe: test.describe,
+  it: test,
+  beforeAll: test.beforeAll,
+  afterAll: test.afterAll,
+  beforeEach: test.beforeEach,
+  afterEach: test.afterEach,
+});
+```
+
+### 2. Define E2E Steps
+
+**`tests/e2e/steps/login.steps.ts`**:
+
+```typescript
+import { Given, When, Then } from "co-gherkin";
+import { expect } from "@playwright/test";
+import { getPage } from "./playwright-context"; // Your context helper
+
+Given("I am on the login page", async () => {
+  const page = getPage();
+  await page.goto("/login");
+});
+
+When(
+  "I enter {string} and {string}",
+  async (email: string, password: string) => {
+    const page = getPage();
+    await page.locator('input[type="email"]').fill(email);
+    await page.locator('input[type="password"]').fill(password);
+    await page.locator('button[type="submit"]').click();
+  }
+);
+
+Then("I should see the dashboard", async () => {
+  const page = getPage();
+  await expect(page).toHaveURL(/.*dashboard/);
+});
+```
+
+### 3. Run the Feature with Playwright
+
+**`tests/e2e/login.spec.ts`**:
+
+```typescript
+import { runFeatureSync } from "co-gherkin";
+import { resolve } from "path";
+import "./playwright-setup"; // Configure co-gherkin
+import "./steps/login.steps"; // Import steps
+
+// Use runFeatureSync for Playwright (synchronous test generation)
+runFeatureSync(resolve(__dirname, "./features/login.feature"));
+```
+
+### 4. Execute with Playwright
+
+```bash
+npx playwright test
+```
+
+### Key Differences: Vitest vs Playwright
+
+| Aspect              | Vitest           | Playwright                    |
+| ------------------- | ---------------- | ----------------------------- |
+| **Function**        | `runFeature()`   | `runFeatureSync()`            |
+| **Test Generation** | Dynamic          | Synchronous                   |
+| **Configuration**   | Auto-detect      | `configureGherkin()` required |
+| **Use Case**        | Unit/Integration | E2E                           |
+
+---
+
 ## ✨ Features
 
-- ✅ **Vitest Native** - Built specifically for Vitest
+- ✅ **Multi-Framework Support** - Works with Vitest AND Playwright
+- ✅ **Vitest Native** - Built specifically for Vitest unit/integration tests
+- ✅ **Playwright E2E** - Full support for Playwright E2E tests
 - ✅ **TypeScript First** - Full type safety and IntelliSense
 - ✅ **Lightweight** - Zero heavy dependencies
-- ✅ **Fast** - Powered by Vitest's speed
+- ✅ **Fast** - Powered by Vitest's and Playwright's speed
 - ✅ **Full Gherkin Support**:
   - ✅ Given, When, Then, And, But, \* keywords
   - ✅ **Background** - Shared setup steps
@@ -134,7 +221,7 @@ npm run test
   - ✅ **Data Tables** - Structured test data
 - ✅ **Regex Patterns** - Capture groups for dynamic values
 - ✅ **Hooks** - BeforeScenario and AfterScenario lifecycle
-- ✅ **Unit + Integration** - Not just E2E testing
+- ✅ **Unit + Integration + E2E** - Complete testing solution
 - ✅ **Easy Migration** - From Cucumber or Playwright BDD
 
 ---
@@ -254,7 +341,7 @@ AfterScenario(() => {
 
 ### Feature Runner
 
-Run a feature file:
+Run a feature file with Vitest (dynamic):
 
 ```typescript
 import { runFeature } from "co-gherkin";
@@ -262,6 +349,35 @@ import { resolve } from "path";
 
 runFeature(resolve(__dirname, "./features/my-feature.feature"));
 ```
+
+Run a feature file with Playwright (synchronous):
+
+```typescript
+import { runFeatureSync } from "co-gherkin";
+import { resolve } from "path";
+
+runFeatureSync(resolve(__dirname, "./features/my-feature.feature"));
+```
+
+### Configuration
+
+Configure co-gherkin for different test frameworks:
+
+```typescript
+import { configureGherkin } from "co-gherkin";
+import { test } from "@playwright/test";
+
+configureGherkin({
+  describe: test.describe,
+  it: test,
+  beforeAll: test.beforeAll,
+  afterAll: test.afterAll,
+  beforeEach: test.beforeEach,
+  afterEach: test.afterEach,
+});
+```
+
+**Note**: Configuration is only required for Playwright. Vitest auto-detects when `globals: true` is enabled.
 
 ---
 

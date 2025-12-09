@@ -34,6 +34,10 @@
  * runFeature('./login.feature');
  */
 
+// Configuration (for framework-agnostic usage)
+export { configureGherkin, getConfig, resetConfig } from './config.js';
+export type { GherkinConfig } from './config.js';
+
 // Step definitions
 export { Given, When, Then, And, But, globalRegistry } from './registry.js';
 
@@ -48,6 +52,9 @@ export {
 
 // Runner
 export { runFeature, parseFeatureFile, executeSteps, executeScenario } from './runner.js';
+
+// Playwright-specific runner (synchronous)
+export { runFeatureSync } from './playwright-runner.js';
 
 // Logger
 export { logger } from './logger.js';
