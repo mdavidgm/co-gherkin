@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { globalHooks, BeforeFeature, AfterFeature } from '../../src/hooks.js';
 import { parseFeatureContent } from '../../src/parser.js';
-import { globalRegistry } from '../../src/registry.js';
+import { globalRegistry, StepRegistry } from '../../src/registry.js';
 import { executeScenario } from '../../src/runner.js';
 import { logger } from '../../src/logger.js';
 import { resolveFeaturePath } from '../../src/utils.js';
@@ -205,6 +205,137 @@ describe('Coverage Hedge Tests', () => {
       globalRegistry.clear();
       globalRegistry.register('Given', 'abc', () => { });
       expect(globalRegistry.getAll()).toHaveLength(1);
+    });
+
+    it('should escape regex special characters in cucumber expressions', () => {
+      const registry = new StepRegistry();
+
+      // All regex special chars treated as literal: . * + ? ^ $ { } ( ) | [ ] \
+      registry.register('Given', 'The price is $5.00 (tax incl.)', () => {});
+      let r = registry.findStep('The price is $5.00 (tax incl.)');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('The price is $5.00 (tax incl.)');
+      expect(registry.findStep('The price is $5.00 (tax incl.) extra')).toBeNull();
+
+      registry.register('When', 'C++ version {int}', () => {});
+      r = registry.findStep('C++ version 17');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('C++ version 17');
+      expect(r!.matches[1]).toBe('17');
+      expect(registry.findStep('C++ version 17 extra')).toBeNull();
+
+      registry.register('Given', 'Item [1] costs *', () => {});
+      r = registry.findStep('Item [1] costs *');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('Item [1] costs *');
+
+      registry.register('Given', 'A|B?', () => {});
+      r = registry.findStep('A|B?');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('A|B?');
+      expect(registry.findStep('AxB?')).toBeNull();
+      expect(registry.findStep('A|B')).toBeNull();
+
+      // Caret (^) inside the pattern should be literal
+      registry.register('Then', 'start^end', () => {});
+      r = registry.findStep('start^end');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('start^end');
+    });
+
+    it('should handle unknown braces as literal text', () => {
+      const registry = new StepRegistry();
+
+      registry.register('Given', 'value is {unknown}', () => {});
+      let r = registry.findStep('value is {unknown}');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('value is {unknown}');
+
+      registry.register('When', 'just {', () => {});
+      expect(registry.findStep('just {')).not.toBeNull();
+    });
+
+    it('should treat backslash as literal and support \\X escaping', () => {
+      const registry = new StepRegistry();
+
+      // Backslash in pattern: C:\path
+      registry.register('Given', 'C:\\path', () => {});
+      let r = registry.findStep('C:\\path');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('C:\\path');
+
+      // \( and \) are literal parens (same as bare parens since we escape both)
+      registry.register('When', '\\(parens\\)', () => {});
+      r = registry.findStep('(parens)');
+      expect(r).not.toBeNull();
+
+      // \{string\} with escaped braces → literal {string}, not a parameter
+      registry.register('Then', '\\{string\\}', () => {});
+      r = registry.findStep('{string}');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('{string}');
+      // No capture groups should exist — {string} was literal
+      expect(r!.matches.length).toBe(1);
+
+      // Un-escaped {string} still works as a parameter
+      registry.register('Given', 'hello {string}', () => {});
+      r = registry.findStep('hello "world"');
+      expect(r).not.toBeNull();
+      expect(r!.matches[1]).toBe('world');
+
+      // \{int\} with escaped braces → literal {int}
+      registry.register('When', '\\{int\\}', () => {});
+      r = registry.findStep('{int}');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('{int}');
+    });
+
+    it('should support anonymous parameter type {}', () => {
+      const registry = new StepRegistry();
+
+      registry.register('Given', 'user {} logged in', () => {});
+      let r = registry.findStep('user Alice logged in');
+      expect(r).not.toBeNull();
+      expect(r!.matches[1]).toBe('Alice');
+
+      r = registry.findStep('user  logged in');
+      expect(r).not.toBeNull();
+      expect(r!.matches[1]).toBe('');
+
+      registry.register('When', '{}', () => {});
+      r = registry.findStep('anything at all');
+      expect(r).not.toBeNull();
+      expect(r!.matches[1]).toBe('anything at all');
+    });
+
+    it('should handle {word} and {float} parameter types alongside special chars', () => {
+      const registry = new StepRegistry();
+
+      registry.register('Given', '${word} (discounted)', () => {});
+      let r = registry.findStep('$foo (discounted)');
+      expect(r).not.toBeNull();
+      expect(r!.matches[1]).toBe('foo');
+
+      registry.register('When', 'temp is {float}°C', () => {});
+      r = registry.findStep('temp is 23.5°C');
+      expect(r).not.toBeNull();
+      expect(r!.matches[1]).toBe('23.5');
+    });
+
+    it('should match mixed parameters with special characters', () => {
+      const registry = new StepRegistry();
+
+      registry.register('Given', '({int}, {int})', () => {});
+      let r = registry.findStep('(42, 7)');
+      expect(r).not.toBeNull();
+      expect(r!.matches[0]).toBe('(42, 7)');
+      expect(r!.matches[1]).toBe('42');
+      expect(r!.matches[2]).toBe('7');
+
+      registry.register('Given', 'price: ${float}', () => {});
+      r = registry.findStep('price: $1.99');
+      expect(r).not.toBeNull();
+      expect(r!.matches[1]).toBe('1.99');
     });
   });
 

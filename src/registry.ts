@@ -17,11 +17,30 @@ class StepRegistry {
   private steps: RegisteredStep[] = [];
 
   private transformCucumberExpression(pattern: string): RegExp {
-    const regexPattern = pattern
-      .replace(/\{string\}/g, '"((?:[^"\\\\]|\\\\.)*)"') // Supports escaped quotes
-      .replace(/\{int\}/g, '(-?\\d+)')
-      .replace(/\{float\}/g, '(-?\\d+\\.\\d+)')
-      .replace(/\{word\}/g, '(\\w+)');
+    // Maps Cucumber parameter types to their regex capture patterns.
+    const PARAM_PATTERNS: Record<string, string> = {
+      '{string}': '"((?:[^"\\\\]|\\\\.)*)"',
+      '{int}':    '(-?\\d+)',
+      '{float}':  '(-?\\d+\\.\\d+)',
+      '{word}':   '(\\w+)',
+      '{}':       '(.*)',
+    };
+
+    // Build tokeniser from three small sub-regexes, one per priority level.
+    const ESCAPED = /(\\([(){}[\]\\/]))/.source;
+    const PARAM   = /(\{string\}|\{int\}|\{float\}|\{word\}|\{\})/.source;
+    const SPECIAL = /([.*+?^${}()|[\]\\])/.source;
+    const tokenRe = new RegExp(`${ESCAPED}|${PARAM}|${SPECIAL}`, 'g');
+
+    const regexPattern = pattern.replace(
+      tokenRe,
+      (_match, _escSeq, escaped, param, special) => {
+        if (escaped) return '\\' + escaped;
+        if (param)   return PARAM_PATTERNS[param];
+        if (special) return '\\' + special;
+        return _match;
+      },
+    );
     return new RegExp(`^${regexPattern}$`);
   }
 
