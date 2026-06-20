@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Anonymous Parameter Type**: Support for `{}` parameter type (matches any text)
+- **`\X` Escape Sequences**: Characters can now be escaped with backslash (`\{`, `\(`, `\\`, etc.) for literal matching in cucumber expressions
+
+### Fixed
+
+- **Regex Escaping**: Regex special characters (`$`, `.`, `(`, `)`, `[`, `]`, `*`, `+`, `?`, `^`, `|`, `\`) in cucumber expression patterns are now properly escaped before conversion to `RegExp`, preventing them from being interpreted as regex metacharacters
+
 ## [1.1.0] - 2025-12-09
 
 ### Added
